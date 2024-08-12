@@ -331,6 +331,200 @@
 
 //**********************************CHALLENGE***********************************
 
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+// static const BaseType_t app_cpu = 0;
+// #else
+// static const BaseType_t app_cpu = 1;
+// #endif
+
+// char *ptr = NULL;
+// static volatile uint8_t msg_flag = 0;
+
+// // Task: Perform some mundate task
+// void TaskA(void *parameter) {
+//   while(1) {
+//     int a = 1;
+//     int b[100];
+
+//     // Perform operations on the array
+//     for (int i = 0; i < 100; i++) {
+//       b[i] = a + 1;
+//     }
+//     Serial.println(b[0]);
+
+//     // Print out the high water mark (remaining stack memory)
+//     Serial.print("High water mark (words): ");
+//     Serial.println(uxTaskGetStackHighWaterMark(NULL));
+
+//     // Print the amount of free heap memory before allocation
+//     Serial.print("Heap before malloc (bytes): ");
+//     Serial.println(xPortGetFreeHeapSize());
+
+//     // Check if there is any data available in the serial buffer
+//     if (Serial.available() > 0) {
+//         // Read the input string
+//         String inputString = Serial.readString();
+
+//         // Allocate memory on the heap for the string, including the null terminator
+//         char *ptr = (char*)pvPortMalloc(inputString.length() + 1); // +1 for null terminator
+
+//         // Ensure that the allocation was successful
+//         if (ptr != NULL) {
+//           // Copy the string to the allocated memory
+//           strcpy(ptr, inputString.c_str());
+
+//           // Print the received string
+//           Serial.print("Received and stored on heap: ");
+//           Serial.println(ptr);
+
+//           // Free the allocated memory
+//           //vPortFree(ptr);
+
+//           vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+//           // Print the amount of free heap memory after allocation
+//           Serial.print("Heap after malloc (bytes): ");
+//           Serial.println(xPortGetFreeHeapSize());
+
+//           // Notify other task that message is ready
+//           msg_flag = 1;
+
+//         } else {
+//             Serial.println("Failed to allocate memory on heap.");
+//         }
+//     } else {
+//         Serial.println("No input received.");
+//     }
+//     // Wait for a while before repeating the loop
+//     vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   }
+// }
+
+// void TaskB(void *parameter) {
+//   while(1) {
+//     // Wait for flag to be set and print message
+//     if (msg_flag == 1) {
+//       Serial.println();
+//       Serial.print("TASKB WILL CLEAR THE HEAP!");
+
+//       // Free buffer, set pointer to NULL, and clear flag
+//       if (ptr != NULL) {
+//           vPortFree(ptr);
+//           ptr = NULL;
+//       }
+//       msg_flag = 0;
+//     }
+
+//     vTaskDelay(2500 / portTICK_PERIOD_MS);    
+//   }
+// }
+
+// void setup() {
+//   Serial.begin(600);
+//   vTaskDelay(1000 / portTICK_PERIOD_MS); // Give time for serial monitor to start
+//   Serial.println("---FreeRTOS Memory Demo---");
+
+//   // Create the task pinned to core 1 with an increased stack size
+//   xTaskCreatePinnedToCore(TaskA,
+//                           "Test TaskA",
+//                           4800,  // Increased stack size
+//                           NULL,
+//                           1,
+//                           NULL,
+//                           app_cpu);
+
+//   // Create the task pinned to core 1 with an increased stack size
+//   xTaskCreatePinnedToCore(TaskB,
+//                           "Test TaskB",
+//                           1080,  // Increased stack size
+//                           NULL,
+//                           1,
+//                           NULL,
+//                           app_cpu);
+
+
+//   // Delete the setup task
+//   vTaskDelete(NULL);
+// }
+
+// void loop() {
+//   // No need for code here, as the loop task is deleted
+// }
+
+//************************************************* QUEUE ************************************************
+
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+// static const BaseType_t app_cpu = 0;
+// #else
+// static const BaseType_t app_cpu = 1;
+// #endif
+
+// // Settings
+// static const uint8_t msg_queue_len = 5;
+
+// // Globals
+// static QueueHandle_t msg_queue;
+
+// // Task: wait for item on queue and print it
+// void printMessages(void *parameters) {
+
+//   int item;
+
+//   // Loop forever
+//   while (1) {
+
+//     // See if there's a message in the queue (do not block)
+//     if (xQueueReceive(msg_queue, (void *)&item, 0) == pdTRUE) {
+      
+//     }
+//     Serial.println(item);
+//     // Wait before trying again
+//     vTaskDelay(500 / portTICK_PERIOD_MS);
+//   }
+// }
+
+// //************************************************************************
+// // Main (runs as its own task with priority 1 on core 1)
+
+// void setup() {
+  
+//   // Configure Serial
+//   Serial.begin(115200);
+
+//   // Wait a moment to start (so we don't miss Serial output)
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   Serial.println();
+//   Serial.println("---FreeRTOS Queue Demo---");
+
+//   // Create queue
+//   msg_queue = xQueueCreate(msg_queue_len, sizeof(int));
+
+//   // Start print task
+//   xTaskCreatePinnedToCore(printMessages,
+//                           "Print Messages",
+//                           1024,
+//                           NULL,
+//                           1,
+//                           NULL,
+//                           app_cpu);
+// }
+
+// void loop() {
+  
+//   static int num = 0;
+
+//   // Try to add item to queue for 10 ticks, fail if queue is full
+//   if (xQueueSend(msg_queue, (void *)&num, 10) != pdTRUE) {
+//     Serial.println("Queue full");
+//   }
+//   num++;
+
+//   // Wait before trying again
+//   vTaskDelay(500 / portTICK_PERIOD_MS);
+// }
+
 // Use only core 1 for demo purposes
 #if CONFIG_FREERTOS_UNICORE
 static const BaseType_t app_cpu = 0;
@@ -338,119 +532,116 @@ static const BaseType_t app_cpu = 0;
 static const BaseType_t app_cpu = 1;
 #endif
 
-char *ptr = NULL;
-static volatile uint8_t msg_flag = 0;
+// Settings
+static const uint8_t msg_queue1_len = 50;
+static const uint8_t msg_queue2_len = 50;
 
-// Task: Perform some mundate task
-void TaskA(void *parameter) {
-  while(1) {
-    int a = 1;
-    int b[100];
+// Globals
+static QueueHandle_t queue_1;
+static QueueHandle_t queue_2;
 
-    // Perform operations on the array
-    for (int i = 0; i < 100; i++) {
-      b[i] = a + 1;
-    }
-    Serial.println(b[0]);
+// Led Pin
+static const int led_pin = LED_BUILTIN;
 
-    // Print out the high water mark (remaining stack memory)
-    Serial.print("High water mark (words): ");
-    Serial.println(uxTaskGetStackHighWaterMark(NULL));
+// Task: wait for item on queue and print it
+void taskA(void *parameters) {
 
-    // Print the amount of free heap memory before allocation
-    Serial.print("Heap before malloc (bytes): ");
-    Serial.println(xPortGetFreeHeapSize());
+  int item;
+  int send_time;
 
-    // Check if there is any data available in the serial buffer
+  // Loop forever
+  while (1) {
     if (Serial.available() > 0) {
-        // Read the input string
-        String inputString = Serial.readString();
 
-        // Allocate memory on the heap for the string, including the null terminator
-        char *ptr = (char*)pvPortMalloc(inputString.length() + 1); // +1 for null terminator
+      Serial.print("Input delay to terminal: ");
+      send_time = Serial.parseInt();
+    
+      // Print newline to terminal
+      Serial.print("\r\n");
 
-        // Ensure that the allocation was successful
-        if (ptr != NULL) {
-          // Copy the string to the allocated memory
-          strcpy(ptr, inputString.c_str());
+      // Send integer to other task via queue
+      if (xQueueSend(queue_1, (void *)&send_time, 10) != pdTRUE) {
+        Serial.println("ERROR: Could not put item on delay queue.");
+      }
 
-          // Print the received string
-          Serial.print("Received and stored on heap: ");
-          Serial.println(ptr);
 
-          // Free the allocated memory
-          //vPortFree(ptr);
-
-          vTaskDelay(1000 / portTICK_PERIOD_MS);
-
-          // Print the amount of free heap memory after allocation
-          Serial.print("Heap after malloc (bytes): ");
-          Serial.println(xPortGetFreeHeapSize());
-
-          // Notify other task that message is ready
-          msg_flag = 1;
-
-        } else {
-            Serial.println("Failed to allocate memory on heap.");
-        }
-    } else {
-        Serial.println("No input received.");
     }
-    // Wait for a while before repeating the loop
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    // Wait before trying again
+    Serial.println("Tick");
+    vTaskDelay(500 / portTICK_PERIOD_MS);     
   }
 }
 
-void TaskB(void *parameter) {
-  while(1) {
-    // Wait for flag to be set and print message
-    if (msg_flag == 1) {
-      Serial.println();
-      Serial.print("TASKB WILL CLEAR THE HEAP!");
+void taskB(void *parameters) {
 
-      // Free buffer, set pointer to NULL, and clear flag
-      if (ptr != NULL) {
-          vPortFree(ptr);
-          ptr = NULL;
+  int delay_time = 0;
+  int true_delay = 50;
+
+  while (1) {
+
+    if (xQueueReceive(queue_1, (void *)&delay_time, 1) == pdTRUE) {
+      if (delay_time > 0) {
+        Serial.print("delay time is: ");
+        Serial.print(delay_time);     
+        true_delay = delay_time;
       }
-      msg_flag = 0;
     }
 
-    vTaskDelay(2500 / portTICK_PERIOD_MS);    
+    digitalWrite(led_pin, HIGH);
+    vTaskDelay(true_delay / portTICK_PERIOD_MS);
+    digitalWrite(led_pin, LOW);
+    vTaskDelay(true_delay / portTICK_PERIOD_MS);
+
   }
 }
 
 void setup() {
-  Serial.begin(600);
-  vTaskDelay(1000 / portTICK_PERIOD_MS); // Give time for serial monitor to start
-  Serial.println("---FreeRTOS Memory Demo---");
+  
+  // Configure Serial
+  Serial.begin(115200);
 
-  // Create the task pinned to core 1 with an increased stack size
-  xTaskCreatePinnedToCore(TaskA,
-                          "Test TaskA",
-                          4800,  // Increased stack size
+  // Configure LED Pin
+  pinMode(led_pin, OUTPUT);
+
+  // Wait a moment to start (so we don't miss Serial output)
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  Serial.println();
+  Serial.println("---FreeRTOS Queue Demo---");
+
+  // Create queue
+  queue_1 = xQueueCreate(msg_queue1_len, sizeof(int));
+
+  // Start print task
+  xTaskCreatePinnedToCore(taskA,
+                          "Print Messages",
+                          1024,
+                          NULL,
+                          2,
+                          NULL,
+                          app_cpu);
+
+  xTaskCreatePinnedToCore(taskB,
+                          "Print Messages",
+                          1024,
                           NULL,
                           1,
                           NULL,
                           app_cpu);
-
-  // Create the task pinned to core 1 with an increased stack size
-  xTaskCreatePinnedToCore(TaskB,
-                          "Test TaskB",
-                          1080,  // Increased stack size
-                          NULL,
-                          1,
-                          NULL,
-                          app_cpu);
-
-
-  // Delete the setup task
-  vTaskDelete(NULL);
 }
 
 void loop() {
-  // No need for code here, as the loop task is deleted
+  
 }
+
+
+
+
+
+
+
+
+
+
 
 
 

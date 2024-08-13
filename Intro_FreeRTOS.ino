@@ -525,121 +525,293 @@
 //   vTaskDelay(500 / portTICK_PERIOD_MS);
 // }
 
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+// static const BaseType_t app_cpu = 0;
+// #else
+// static const BaseType_t app_cpu = 1;
+// #endif
+
+// // Settings
+// static const uint8_t msg_queue1_len = 50;
+// static const uint8_t msg_queue2_len = 50;
+
+// // Globals
+// static QueueHandle_t queue_1;
+// static QueueHandle_t queue_2;
+
+// // Led Pin
+// static const int led_pin = LED_BUILTIN;
+
+// // Task: wait for item on queue and print it
+// void taskA(void *parameters) {
+
+//   int item;
+//   int send_time;
+
+//   // Loop forever
+//   while (1) {
+//     if (Serial.available() > 0) {
+
+//       Serial.print("Input delay to terminal: ");
+//       send_time = Serial.parseInt();
+    
+//       // Print newline to terminal
+//       Serial.print("\r\n");
+
+//       // Send integer to other task via queue
+//       if (xQueueSend(queue_1, (void *)&send_time, 10) != pdTRUE) {
+//         Serial.println("ERROR: Could not put item on delay queue.");
+//       }
+
+
+//     }
+//     // Wait before trying again
+//     Serial.println("Tick");
+//     vTaskDelay(500 / portTICK_PERIOD_MS);     
+//   }
+// }
+
+// void taskB(void *parameters) {
+
+//   int delay_time = 0;
+//   int true_delay = 50;
+
+//   while (1) {
+
+//     if (xQueueReceive(queue_1, (void *)&delay_time, 1) == pdTRUE) {
+//       if (delay_time > 0) {
+//         Serial.print("delay time is: ");
+//         Serial.print(delay_time);     
+//         true_delay = delay_time;
+//       }
+//     }
+
+//     digitalWrite(led_pin, HIGH);
+//     vTaskDelay(true_delay / portTICK_PERIOD_MS);
+//     digitalWrite(led_pin, LOW);
+//     vTaskDelay(true_delay / portTICK_PERIOD_MS);
+
+//   }
+// }
+
+// void setup() {
+  
+//   // Configure Serial
+//   Serial.begin(115200);
+
+//   // Configure LED Pin
+//   pinMode(led_pin, OUTPUT);
+
+//   // Wait a moment to start (so we don't miss Serial output)
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   Serial.println();
+//   Serial.println("---FreeRTOS Queue Demo---");
+
+//   // Create queue
+//   queue_1 = xQueueCreate(msg_queue1_len, sizeof(int));
+
+//   // Start print task
+//   xTaskCreatePinnedToCore(taskA,
+//                           "Print Messages",
+//                           1024,
+//                           NULL,
+//                           2,
+//                           NULL,
+//                           app_cpu);
+
+//   xTaskCreatePinnedToCore(taskB,
+//                           "Print Messages",
+//                           1024,
+//                           NULL,
+//                           1,
+//                           NULL,
+//                           app_cpu);
+// }
+
+// void loop() {
+  
+// }
+
+//*********************************************** MUTEX *******************************************
+
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+// static const BaseType_t app_cpu = 0;
+// #else
+// static const BaseType_t app_cpu = 1;
+// #endif
+
+// // Globals
+// static int shared_var = 0;
+// static SemaphoreHandle_t mutex;
+
+// //**********************************************************
+// // Tasks
+
+// // Increment shared variable (the wrong way)
+// void incTask(void *parameters) {
+
+//   int local_var;
+
+//   // Loop forever
+//   while (1) {
+
+//     // Take mutex prior to critical section
+//     if (xSemaphoreTake(mutex, 0) == pdTRUE) {
+//       // Roundabout way to do "shared_var++" randomly and poorly
+//       local_var = shared_var;
+//       local_var++;
+//       vTaskDelay(random(100, 500) / portTICK_PERIOD_MS);
+//       shared_var = local_var;
+
+//       // Give mutex after critical Section
+//       xSemaphoreGive(mutex);
+
+//       // Print out new shared variable
+//       Serial.println(shared_var);  
+//     } else {
+//       // Do something else
+//     }
+//   }
+// }
+
+// //**********************************************************
+// // Main (runs as its own task with priority 1 on core 1)
+
+// void setup() {
+
+//   // Hack to kinda get randomness
+//   randomSeed(analogRead(0));
+
+//   // Configure Serial
+//   Serial.begin(115200);
+
+//   // Wait a moment to start (so we don't miss Serial output)
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   Serial.println();
+//   Serial.println("---FreeRTOS Race Condition Demo---");
+
+//   // Create mutex before starting tasks
+//   mutex = xSemaphoreCreateMutex();
+
+//   // Start task 1
+//   xTaskCreatePinnedToCore(incTask,
+//                       "Increment Task 1",
+//                       1024,
+//                       NULL,
+//                       1,
+//                       NULL,
+//                       app_cpu);
+
+//   // Show that we accomplished our task of passing the stack-based argument
+//   Serial.println("Done!");
+// }
+
+
+// void loop() {
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+// }
+
+/**
+ * FreeRTOS Mutex Challenge
+ * 
+ * Pass a parameter to a task using a mutex.
+ * 
+ * Date: January 20, 2021
+ * Author: Shawn Hymel
+ * License: 0BSD
+ */
+
+// You'll likely need this on vanilla FreeRTOS
+//#include <semphr.h>
+
 // Use only core 1 for demo purposes
 #if CONFIG_FREERTOS_UNICORE
-static const BaseType_t app_cpu = 0;
+  static const BaseType_t app_cpu = 0;
 #else
-static const BaseType_t app_cpu = 1;
+  static const BaseType_t app_cpu = 1;
 #endif
 
-// Settings
-static const uint8_t msg_queue1_len = 50;
-static const uint8_t msg_queue2_len = 50;
-
-// Globals
-static QueueHandle_t queue_1;
-static QueueHandle_t queue_2;
-
-// Led Pin
+// Pins (change this if your Arduino board does not have LED_BUILTIN defined)
 static const int led_pin = LED_BUILTIN;
+static SemaphoreHandle_t mutex;
 
-// Task: wait for item on queue and print it
-void taskA(void *parameters) {
+//*****************************************************************************
+// Tasks
 
-  int item;
-  int send_time;
+// Blink LED based on rate passed by parameter
+void blinkLED(void *parameters) {
 
-  // Loop forever
+  // Copy the parameter into a local variable
+  int num = *(int *)parameters;
+
+  // Print the parameter
+  Serial.print("Received: ");
+  Serial.println(num);
+
+  // Configure the LED pin
+  pinMode(led_pin, OUTPUT);
+
+  xSemaphoreGive(mutex);
+  // Blink forever and ever
   while (1) {
-    if (Serial.available() > 0) {
-
-      Serial.print("Input delay to terminal: ");
-      send_time = Serial.parseInt();
-    
-      // Print newline to terminal
-      Serial.print("\r\n");
-
-      // Send integer to other task via queue
-      if (xQueueSend(queue_1, (void *)&send_time, 10) != pdTRUE) {
-        Serial.println("ERROR: Could not put item on delay queue.");
-      }
-
-
-    }
-    // Wait before trying again
-    Serial.println("Tick");
-    vTaskDelay(500 / portTICK_PERIOD_MS);     
-  }
-}
-
-void taskB(void *parameters) {
-
-  int delay_time = 0;
-  int true_delay = 50;
-
-  while (1) {
-
-    if (xQueueReceive(queue_1, (void *)&delay_time, 1) == pdTRUE) {
-      if (delay_time > 0) {
-        Serial.print("delay time is: ");
-        Serial.print(delay_time);     
-        true_delay = delay_time;
-      }
-    }
-
     digitalWrite(led_pin, HIGH);
-    vTaskDelay(true_delay / portTICK_PERIOD_MS);
+    vTaskDelay(num / portTICK_PERIOD_MS);
     digitalWrite(led_pin, LOW);
-    vTaskDelay(true_delay / portTICK_PERIOD_MS);
-
+    vTaskDelay(num / portTICK_PERIOD_MS);
   }
 }
+
+
+
+//*****************************************************************************
+// Main (runs as its own task with priority 1 on core 1)
 
 void setup() {
-  
+
+  long int delay_arg;
+
   // Configure Serial
   Serial.begin(115200);
-
-  // Configure LED Pin
-  pinMode(led_pin, OUTPUT);
 
   // Wait a moment to start (so we don't miss Serial output)
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   Serial.println();
-  Serial.println("---FreeRTOS Queue Demo---");
+  Serial.println("---FreeRTOS Mutex Challenge---");
+  Serial.println("Enter a number for delay (milliseconds)");
 
-  // Create queue
-  queue_1 = xQueueCreate(msg_queue1_len, sizeof(int));
+  mutex = xSemaphoreCreateMutex();
 
-  // Start print task
-  xTaskCreatePinnedToCore(taskA,
-                          "Print Messages",
+  // Wait for input from Serial
+  while (Serial.available() <= 0);
+
+  // Read integer value
+  delay_arg = Serial.parseInt();
+  Serial.print("Sending: ");
+  Serial.println(delay_arg);
+
+  // Start task 1
+  xTaskCreatePinnedToCore(blinkLED,
+                          "Blink LED",
                           1024,
-                          NULL,
-                          2,
-                          NULL,
-                          app_cpu);
-
-  xTaskCreatePinnedToCore(taskB,
-                          "Print Messages",
-                          1024,
-                          NULL,
+                          (void *)&delay_arg,
                           1,
                           NULL,
                           app_cpu);
+
+  // Do nothing until mutex has been returned (maximum delay)
+  xSemaphoreTake(mutex, portMAX_DELAY);
+
+  // Show that we accomplished our task of passing the stack-based argument
+  Serial.println("Done!");
 }
 
 void loop() {
   
+  // Do nothing but allow yielding to lower-priority tasks
+  vTaskDelay(1000 / portTICK_PERIOD_MS);
 }
-
-
-
-
-
-
-
-
 
 
 

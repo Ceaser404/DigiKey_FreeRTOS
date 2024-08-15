@@ -726,6 +726,336 @@
 // You'll likely need this on vanilla FreeRTOS
 //#include <semphr.h>
 
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+//   static const BaseType_t app_cpu = 0;
+// #else
+//   static const BaseType_t app_cpu = 1;
+// #endif
+
+// // Pins (change this if your Arduino board does not have LED_BUILTIN defined)
+// static const int led_pin = LED_BUILTIN;
+// static SemaphoreHandle_t mutex;
+
+// //*****************************************************************************
+// // Tasks
+
+// // Blink LED based on rate passed by parameter
+// void blinkLED(void *parameters) {
+
+//   // Copy the parameter into a local variable
+//   int num = *(int *)parameters;
+
+//   // Print the parameter
+//   Serial.print("Received: ");
+//   Serial.println(num);
+
+//   // Configure the LED pin
+//   pinMode(led_pin, OUTPUT);
+
+//   xSemaphoreGive(mutex);
+//   // Blink forever and ever
+//   while (1) {
+//     digitalWrite(led_pin, HIGH);
+//     vTaskDelay(num / portTICK_PERIOD_MS);
+//     digitalWrite(led_pin, LOW);
+//     vTaskDelay(num / portTICK_PERIOD_MS);
+//   }
+// }
+
+
+
+// //*****************************************************************************
+// // Main (runs as its own task with priority 1 on core 1)
+
+// void setup() {
+
+//   long int delay_arg;
+
+//   // Configure Serial
+//   Serial.begin(115200);
+
+//   // Wait a moment to start (so we don't miss Serial output)
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   Serial.println();
+//   Serial.println("---FreeRTOS Mutex Challenge---");
+//   Serial.println("Enter a number for delay (milliseconds)");
+
+//   mutex = xSemaphoreCreateMutex();
+
+//   // Wait for input from Serial
+//   while (Serial.available() <= 0);
+
+//   // Read integer value
+//   delay_arg = Serial.parseInt();
+//   Serial.print("Sending: ");
+//   Serial.println(delay_arg);
+
+//   // Start task 1
+//   xTaskCreatePinnedToCore(blinkLED,
+//                           "Blink LED",
+//                           1024,
+//                           (void *)&delay_arg,
+//                           1,
+//                           NULL,
+//                           app_cpu);
+
+//   // Do nothing until mutex has been returned (maximum delay)
+//   xSemaphoreTake(mutex, portMAX_DELAY);
+
+//   // Show that we accomplished our task of passing the stack-based argument
+//   Serial.println("Done!");
+// }
+
+// void loop() {
+  
+//   // Do nothing but allow yielding to lower-priority tasks
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+// }
+
+//********************************************************** Semaphore ************************************************************
+
+// /**
+//  * FreeRTOS Counting Semaphore Challenge
+//  * 
+//  * Challenge: use a mutex and counting semaphores to protect the shared buffer 
+//  * so that each number (0 throguh 4) is printed exactly 3 times to the Serial 
+//  * monitor (in any order). Do not use queues to do this!
+//  * 
+//  * Hint: you will need 2 counting semaphores in addition to the mutex, one for 
+//  * remembering number of filled slots in the buffer and another for 
+//  * remembering the number of empty slots in the buffer.
+//  * 
+//  * Date: January 24, 2021
+//  * Author: Shawn Hymel
+//  * License: 0BSD
+//  */
+
+// // You'll likely need this on vanilla FreeRTOS
+// //#include <semphr.h>
+
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+//   static const BaseType_t app_cpu = 0;
+// #else
+//   static const BaseType_t app_cpu = 1;
+// #endif
+
+// // Settings
+// enum {BUF_SIZE = 5};                  // Size of buffer array
+// static const int num_prod_tasks = 5;  // Number of producer tasks
+// static const int num_cons_tasks = 2;  // Number of consumer tasks
+// static const int num_writes = 3;      // Num times each producer writes to buf
+
+// // Globals
+// static int buf[BUF_SIZE];             // Shared buffer
+// static int head = 0;                  // Writing index to buffer
+// static int tail = 0;                  // Reading index to buffer
+// static SemaphoreHandle_t bin_sem;     // Waits for parameter to be read
+// static SemaphoreHandle_t mutex;       // Lock access to buffer and Serial
+// static SemaphoreHandle_t sem_empty;   // Counts number of empty slots in buf
+// static SemaphoreHandle_t sem_filled;  // Counts number of filled slots in buf
+
+// //*****************************************************************************
+// // Tasks
+
+// // Producer: write a given number of times to shared buffer
+// void producer(void *parameters) {
+
+//   // Copy the parameters into a local variable
+//   int num = *(int *)parameters;
+
+//   // Release the binary semaphore
+//   xSemaphoreGive(bin_sem);
+
+//   // Fill shared buffer with task number
+//   for (int i = 0; i < num_writes; i++) {
+
+//     // Wait for empty slot in buffer to be available
+//     xSemaphoreTake(sem_empty, portMAX_DELAY);
+
+//     // Critical section (accessing shared buffer)
+//     xSemaphoreTake(mutex, portMAX_DELAY);
+//     buf[head] = num;
+//     head = (head + 1) % BUF_SIZE;
+//     xSemaphoreGive(mutex);
+
+//     // Signal to consumer tasks that a slot in the buffer has been filled
+//     xSemaphoreGive(sem_filled);
+//   }
+
+//   // Delete self task
+//   vTaskDelete(NULL);
+// }
+
+// // Consumer: continuously read from shared buffer
+// void consumer(void *parameters) {
+
+//   int val;
+
+//   // Read from buffer
+//   while (1) {
+
+//     // Wait for at least one slot in buffer to be filled
+//     xSemaphoreTake(sem_filled, portMAX_DELAY);
+
+//     // Lock critical section with a mutex
+//     xSemaphoreTake(mutex, portMAX_DELAY);
+//     val = buf[tail];
+//     tail = (tail + 1) % BUF_SIZE;
+//     Serial.println(val);
+//     xSemaphoreGive(mutex);
+
+//     // Signal to producer thread that a slot in the buffer is free
+//     xSemaphoreGive(sem_empty);
+//   }
+// }
+
+// //*****************************************************************************
+// // Main (runs as its own task with priority 1 on core 1)
+
+// void setup() {
+
+//   char task_name[12];
+  
+//   // Configure Serial
+//   Serial.begin(115200);
+
+//   // Wait a moment to start (so we don't miss Serial output)
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   Serial.println();
+//   Serial.println("---FreeRTOS Semaphore Solution---");
+
+//   // Create mutexes and semaphores before starting tasks
+//   bin_sem = xSemaphoreCreateBinary();
+//   mutex = xSemaphoreCreateMutex();
+//   sem_empty = xSemaphoreCreateCounting(BUF_SIZE, BUF_SIZE);
+//   sem_filled = xSemaphoreCreateCounting(BUF_SIZE, 0);
+
+//   // Start producer tasks (wait for each to read argument)
+//   for (int i = 0; i < num_prod_tasks; i++) {
+//     sprintf(task_name, "Producer %i", i);
+//     xTaskCreatePinnedToCore(producer,
+//                             task_name,
+//                             1024,
+//                             (void *)&i,
+//                             1,
+//                             NULL,
+//                             app_cpu);
+//     xSemaphoreTake(bin_sem, portMAX_DELAY);
+//   }
+
+//   // Start consumer tasks
+//   for (int i = 0; i < num_cons_tasks; i++) {
+//     sprintf(task_name, "Consumer %i", i);
+//     xTaskCreatePinnedToCore(consumer,
+//                             task_name,
+//                             1024,
+//                             NULL,
+//                             1,
+//                             NULL,
+//                             app_cpu);
+//   }
+
+//   // Notify that all tasks have been created (lock Serial with mutex)
+//   xSemaphoreTake(mutex, portMAX_DELAY);
+//   Serial.println("All tasks created");
+//   xSemaphoreGive(mutex);
+// }
+
+// void loop() {
+  
+//   // Do nothing but allow yielding to lower-priority tasks
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+// }
+
+//********************************************************** Timers ************************************************************
+// // You'll likely need this on FreeRTOS
+// // #include timers.h
+
+// // Use only core 1 for demo purposes
+// #if CONFIG_FREERTOS_UNICORE
+//   static const BaseType_t app_cpu = 0;
+// #else
+//   static const BaseType_t app_cpu = 1;
+// #endif
+
+// // Globals
+// static TimerHandle_t one_shot_timer = NULL;
+// static TimerHandle_t auto_reload_timer = NULL;
+
+// //*********************************************************************************
+// // Callbacks
+
+// // Called when one of the timers expires
+// void myTimerCallback(TimerHandle_t xTimer) {
+
+//   // Print message if timer 0 expired
+//   if ((uint32_t)pvTimerGetTimerID(xTimer) == 0) {
+//     Serial.println("One-shot timer expired");
+//   }
+  
+//   // Print message if timer 1 expired
+//   if ((uint32_t)pvTimerGetTimerID(xTimer) == 1) {
+//     Serial.println("Auto-reload timer expired");
+//   }
+// }
+
+// //*********************************************************************************
+// // Main (runs as its own task with priority 1 on core 1)
+
+// void setup() {
+
+//   // Configure Serial
+//   Serial.begin(115200);
+
+//   // Wait a moment to start (so we don't miss Serial output)
+//   vTaskDelay(1000 / portTICK_PERIOD_MS);
+//   Serial.println();
+//   Serial.println("---FreeRTOS Timer Demo---");
+
+//   // Create a one-shot timer
+//   one_shot_timer = xTimerCreate(
+//                             "One-shot timer",           // Name of timer
+//                             2000 / portTICK_PERIOD_MS,  // Period of timer (in ticks)
+//                             pdFALSE,                    // Auto-reload
+//                             (void *) 0,                 // Timer ID
+//                             myTimerCallback);           // Callback function
+
+//   // Create a one-shot timer
+//   auto_reload_timer = xTimerCreate(
+//                             "Auto-reload timer",           // Name of timer
+//                             1000 / portTICK_PERIOD_MS,  // Period of timer (in ticks)
+//                             pdTRUE,                    // Auto-reload
+//                             (void *) 1,                 // Timer ID
+//                             myTimerCallback);           // Callback function
+
+//   // Check to make sure timers were created
+//   if (one_shot_timer == NULL || auto_reload_timer == NULL) {
+//     Serial.println("Could not create one of the timers");
+//   } else {
+
+//     // Wait and then print out a message that we're starting the timer
+//     vTaskDelay(1000 / portTICK_PERIOD_MS);
+//     Serial.println("Starting timers...");
+
+//     // Start timers (max block time if command queue is full)
+//     xTimerStart(one_shot_timer, portMAX_DELAY);
+//     xTimerStart(auto_reload_timer, portMAX_DELAY);
+//   }
+
+//   // Delete self task to show that timers will work with no user tasks
+//   vTaskDelete(NULL);
+// }
+
+// void loop() {
+//   // put your main code here, to run repeatedly:
+
+// }
+
+// You'll likely need this on FreeRTOS
+// #include timers.h
+
 // Use only core 1 for demo purposes
 #if CONFIG_FREERTOS_UNICORE
   static const BaseType_t app_cpu = 0;
@@ -733,44 +1063,31 @@
   static const BaseType_t app_cpu = 1;
 #endif
 
-// Pins (change this if your Arduino board does not have LED_BUILTIN defined)
+// Pins
 static const int led_pin = LED_BUILTIN;
-static SemaphoreHandle_t mutex;
 
-//*****************************************************************************
-// Tasks
+// Globals
+static TimerHandle_t one_shot_timer = NULL;
 
-// Blink LED based on rate passed by parameter
-void blinkLED(void *parameters) {
+//*********************************************************************************
+// Callbacks
 
-  // Copy the parameter into a local variable
-  int num = *(int *)parameters;
+// Called when one of the timers expires
+void myTimerCallback(TimerHandle_t xTimer) {
 
-  // Print the parameter
-  Serial.print("Received: ");
-  Serial.println(num);
-
-  // Configure the LED pin
-  pinMode(led_pin, OUTPUT);
-
-  xSemaphoreGive(mutex);
-  // Blink forever and ever
-  while (1) {
-    digitalWrite(led_pin, HIGH);
-    vTaskDelay(num / portTICK_PERIOD_MS);
-    digitalWrite(led_pin, LOW);
-    vTaskDelay(num / portTICK_PERIOD_MS);
+  digitalWrite(led_pin, LOW);
+    
+  // Print message if timer 0 expired
+  if ((uint32_t)pvTimerGetTimerID(xTimer) == 0) {
+    Serial.println("One-shot timer expired");
   }
+  Serial.println("Turned off LED");
 }
 
-
-
-//*****************************************************************************
+//*********************************************************************************
 // Main (runs as its own task with priority 1 on core 1)
 
 void setup() {
-
-  long int delay_arg;
 
   // Configure Serial
   Serial.begin(115200);
@@ -778,40 +1095,56 @@ void setup() {
   // Wait a moment to start (so we don't miss Serial output)
   vTaskDelay(1000 / portTICK_PERIOD_MS);
   Serial.println();
-  Serial.println("---FreeRTOS Mutex Challenge---");
-  Serial.println("Enter a number for delay (milliseconds)");
+  Serial.println("---FreeRTOS Timer Demo---");
 
-  mutex = xSemaphoreCreateMutex();
+  // Configure pin
+  pinMode(led_pin, OUTPUT);
 
-  // Wait for input from Serial
-  while (Serial.available() <= 0);
+  digitalWrite(led_pin, HIGH);
 
-  // Read integer value
-  delay_arg = Serial.parseInt();
-  Serial.print("Sending: ");
-  Serial.println(delay_arg);
+  // Create a one-shot timer
+  one_shot_timer = xTimerCreate(
+                            "One-shot timer",           // Name of timer
+                            5000 / portTICK_PERIOD_MS,  // Period of timer (in ticks)
+                            pdFALSE,                    // Auto-reload
+                            (void *) 0,                 // Timer ID
+                            myTimerCallback);           // Callback function
 
-  // Start task 1
-  xTaskCreatePinnedToCore(blinkLED,
-                          "Blink LED",
-                          1024,
-                          (void *)&delay_arg,
-                          1,
-                          NULL,
-                          app_cpu);
 
-  // Do nothing until mutex has been returned (maximum delay)
-  xSemaphoreTake(mutex, portMAX_DELAY);
 
-  // Show that we accomplished our task of passing the stack-based argument
-  Serial.println("Done!");
+
+
+  // Check to make sure timers were created
+  if (one_shot_timer == NULL) {
+    Serial.println("Could not create one of the timers");
+  } else {
+
+    // Wait and then print out a message that we're starting the timer
+    vTaskDelay(1000 / portTICK_PERIOD_MS);
+    Serial.println("Starting timers...");
+
+    while (1) {
+      if (Serial.read() > 0) {
+        Serial.print("Imput Sensed");
+        xTimerStart(one_shot_timer, 5000);        
+      }
+    }
+    // Start timers (max block time if command queue is full)
+    xTimerStart(one_shot_timer, portMAX_DELAY);
+  }
+
+  // Delete self task to show that timers will work with no user tasks
+  vTaskDelete(NULL);
 }
 
 void loop() {
-  
-  // Do nothing but allow yielding to lower-priority tasks
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+  // put your main code here, to run repeatedly:
+
 }
+
+
+
+
 
 
 
